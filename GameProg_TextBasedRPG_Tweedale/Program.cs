@@ -8,7 +8,7 @@ namespace GameProg_TextBasedRPG_Tweedale
 {
     internal class Program
     {
-        static char[,] simonMap = new char[,] // dimensions defined by following data:
+        static char[,] map = new char[,] // dimensions defined by following data:
         {
             {'^','^','^','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`'},
             {'^','^','`','`','`','`','*','*','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','`','~','~','~','`','`','`'},
@@ -30,6 +30,8 @@ namespace GameProg_TextBasedRPG_Tweedale
             {'$', '@' }
         };
 
+        
+
         // usage: map[y, x]
 
         // map legend:
@@ -38,49 +40,160 @@ namespace GameProg_TextBasedRPG_Tweedale
         // ~ = water
         // * = trees
 
+        
+
 
         static void Main(string[] args)
         {
+            int scale = 1;
+            bool looping = true;
+
             //PrintMap(testMap, 1);
-            //PrintMap(testMap, 2);
-            PrintMap(simonMap, 4);
+            //PrintMap(testMap, 4);
+            DisplayMap();
+
+            while (looping) 
+            {
+                Console.WriteLine();
+                if (scale > 1) Console.Write($"{scale - 1} <--");
+                else Console.Write("     ");
+                Console.Write($"    {scale}    ");
+                Console.WriteLine($"--> {scale + 1}");
+                Console.WriteLine("\n     Esc = Quit");
+
+                bool readinginput = true;
+
+                while (readinginput) 
+                {
+                    ConsoleKey input = Console.ReadKey(true).Key;
+
+                    if (input == ConsoleKey.LeftArrow && scale > 1)
+                    {
+                        scale--;
+                        readinginput = false;
+                    }
+                    else if (input == ConsoleKey.RightArrow)
+                    {
+                        scale++;
+                        readinginput = false;
+                    }
+                    else if (input == ConsoleKey.Escape) 
+                    {
+                        readinginput = false;
+                        looping = false;
+                        Console.WriteLine("Goodbye!");
+                    }
+                }
+
+                if (looping) 
+                {
+                    Console.Clear();
+                    DisplayMap(scale);
+                }
+
+            }
         }
 
-        static void PrintMap(char[,] map, int mult = 1) 
+        static void DisplayMap(int scale) 
         {
-            DrawHorizontalBorder(map.GetLength(1) * mult);
+            DrawHorizontalBorder(map.GetLength(1) * scale, true);
 
             for (int row = 0; row < map.GetLength(0); row++) 
             {
-                for (int dupeRow = 0; dupeRow < mult; dupeRow++) 
+                for (int dupeRow = 0; dupeRow < scale; dupeRow++) 
                 {
-                    Console.Write('|');
+                    Console.Write('║');
                     
                     for (int col = 0; col < map.GetLength(1); col++)
                     {
-                        for (int dupeCol = 0; dupeCol < mult; dupeCol++)
+                        for (int dupeCol = 0; dupeCol < scale; dupeCol++)
                         {
+                            char c = map[row, col];
+
+                            GetColorForChar(c);
+
                             Console.Write(map[row, col]);
+
+                            Console.ForegroundColor = ConsoleColor.White;
                         }
                     }
                         
-                    Console.WriteLine('|');
+                    Console.WriteLine('║');
                 }
                 
             }
-            DrawHorizontalBorder(map.GetLength(1) * mult);
+            DrawHorizontalBorder(map.GetLength(1) * scale, false);
+            DisplayLegend();
         }
 
-        static void DrawHorizontalBorder(int length) 
+        static void DisplayMap()
         {
-            Console.Write('+');
+            DrawHorizontalBorder(map.GetLength(1), true);
 
-            for (int i = 0; i < length; i++) 
+            for (int row = 0; row < map.GetLength(0); row++)
             {
-                Console.Write("-");
-            }
+                Console.Write('║');
 
-            Console.WriteLine('+');
+                for (int col = 0; col < map.GetLength(1); col++)
+                {
+                    char c = map[row, col];
+
+                    GetColorForChar(c);
+
+                    Console.Write(map[row, col]);
+
+                    Console.ForegroundColor = ConsoleColor.White;
+                        
+                }
+
+                Console.WriteLine('║');
+                
+
+            }
+            DrawHorizontalBorder(map.GetLength(1), false);
+            DisplayLegend();
+        }
+
+        static void DrawHorizontalBorder(int length, bool top) 
+        {
+            if (top) Console.Write('╔');
+            else Console.Write('╚');
+
+                for (int i = 0; i < length; i++)
+                {
+                    Console.Write("═");
+                }
+
+            if (top) Console.WriteLine('╗');
+            else Console.WriteLine('╝');
+        }
+
+        static void DisplayLegend()
+        {
+            Console.WriteLine();
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("` = Grass");
+
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("~ = Water");
+
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine("^ = Mountain");
+
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Console.WriteLine("* = Trees");
+
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        static void GetColorForChar(char c) 
+        {
+            if (c == '`') Console.ForegroundColor = ConsoleColor.Green;
+            else if (c == '~') Console.ForegroundColor = ConsoleColor.Blue;
+            else if (c == '^') Console.ForegroundColor = ConsoleColor.DarkGray;
+            else if (c == '*') Console.ForegroundColor = ConsoleColor.DarkGreen;
+            else Console.ForegroundColor = ConsoleColor.White;
         }
     }
 }
