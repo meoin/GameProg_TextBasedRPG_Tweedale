@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,14 +11,17 @@ namespace GameProg_TextBasedRPG_Tweedale
 {
     internal class Player 
     {
-        private int maxHP = 5;
+        private int maxHP;
         private int health;
         private int attack;
         public int xPos;
         public int yPos;
 
-        public Player(int hp, int att, int x, int y) 
+        public (int x, int y) lastMovement = (0, 0);
+
+        public Player(int maxhp, int hp, int att, int x, int y) 
         {
+            maxHP = maxhp;
             health = hp; 
             attack = att; 
             xPos = x; 
@@ -39,9 +43,129 @@ namespace GameProg_TextBasedRPG_Tweedale
             health = Math.Max(health - dmg, 0);
         }
 
-        public void MoveHorizontal(int movement) { xPos = xPos + movement; }
-        public void MoveVertical(int movement) { yPos = yPos + movement; }
+        public void MoveHorizontal(int movement) 
+        {
+            xPos = xPos + movement;
+            lastMovement = (movement, 0);
+        }
+        public void MoveVertical(int movement) 
+        {
+            yPos = yPos + movement;
+            lastMovement = (0, movement);
+        }
+
         public void SetPosition((int, int) pos) 
+        {
+            yPos = pos.Item1;
+            xPos = pos.Item2;
+        }
+    }
+
+    internal class Enemy 
+    {
+        private int maxHP;
+        private int health;
+        private int attack;
+        public int xPos;
+        public int yPos;
+
+        public (int x, int y) lastMovement = (0, 0);
+
+        public Enemy(int hp, int att, int x, int y)
+        {
+            health = hp;
+            attack = att;
+            xPos = x;
+            yPos = y;
+
+            maxHP = hp;
+        }
+        public int GetHealth() { return health; }
+        public int GetAttack() { return attack; }
+        public int XPos() { return xPos; }
+        public int YPos() { return yPos; }
+
+        public void Heal(int heal)
+        {
+            health = Math.Min(health + heal, maxHP);
+        }
+
+        public void TakeDamage(int dmg)
+        {
+            health = Math.Max(health - dmg, 0);
+        }
+
+        public bool CheckIfDead() 
+        {
+            return health <= 0;
+        }
+
+        public void MoveHorizontal(int movement)
+        {
+            xPos = xPos + movement;
+            lastMovement = (movement, 0);
+        }
+        public void MoveVertical(int movement)
+        {
+            yPos = yPos + movement;
+            lastMovement = (0, movement);
+        }
+
+        public void MoveTowardsPlayer(string[] map, int playerX, int playerY)
+        {
+            /*int xDistance = playerX - xPos;
+            int yDistance = playerY - yPos;
+
+            if (Math.Abs(xDistance) > Math.Abs(yDistance) && xDistance > 0 && map[yPos][xPos+1] == '`') 
+            {
+                MoveHorizontal(1);
+            } 
+            else if (Math.Abs(xDistance) > Math.Abs(yDistance) && xDistance < 0 && map[yPos][xPos-1] == '`')
+            {
+                MoveHorizontal(-1);
+            }
+            else if (Math.Abs(xDistance) <= Math.Abs(yDistance) && yDistance > 0 && map[yPos+1][xPos] == '`')
+            {
+                MoveVertical(1);
+            }
+            else if (Math.Abs(xDistance) <= Math.Abs(yDistance) && yDistance < 0 && map[yPos-1][xPos] == '`')
+            {
+                MoveVertical(-1);
+            }*/
+
+            (int xPos, int yPos)[] possiblePositions = { (xPos + 1, yPos), (xPos - 1, yPos), (xPos, yPos + 1), (xPos, yPos - 1) };
+            (int index, int distance)[] sortedPositions = new (int, int)[4];
+
+            for (int i = 0; i < 4; i++) 
+            {
+                int xDistance = playerX - possiblePositions[i].xPos;
+                int yDistance = playerY - possiblePositions[i].yPos;
+
+                int totalDistance = Math.Abs(xDistance) + Math.Abs(yDistance);
+
+                sortedPositions[i] = (i, totalDistance);
+            }
+
+            Array.Sort(sortedPositions, (x, y) => x.distance.CompareTo(y.distance));
+
+            if (!(xPos == playerX && yPos == playerY)) 
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    int newXPos = possiblePositions[sortedPositions[i].index].xPos;
+                    int newYPos = possiblePositions[sortedPositions[i].index].yPos;
+
+                    if (map[newYPos][newXPos] == '`')
+                    {
+                        lastMovement = (newXPos - xPos, newYPos - yPos);
+                        SetPosition((newYPos, newXPos));
+                        break;
+                    }
+                }
+            }
+        }
+
+        public void SetPosition((int, int) pos)
         {
             yPos = pos.Item1;
             xPos = pos.Item2;
@@ -61,6 +185,8 @@ namespace GameProg_TextBasedRPG_Tweedale
 
         static Player player;
 
+        static List<Enemy> enemies = new List<Enemy>();
+
         // usage: map[y, x]
 
         // map legend:
@@ -78,23 +204,86 @@ namespace GameProg_TextBasedRPG_Tweedale
             bool looping = true;
             ReadMap();
 
-            player = new Player(5, 1, 0, 0);
+            player = new Player(5, 5, 1, 0, 0);
             player.SetPosition(GetStartPosition());
+
+            enemies.Add(new Enemy(1, 1, 5, 0));
             
             DisplayMap();
             DrawPlayer();
+            DrawEnemies();
 
             while (looping) 
             {
-                Thread.Sleep(300);
+                Thread.Sleep(500);
+                
                 ReadPlayerInput();
+                
+
+                foreach (Enemy enemy in enemies) 
+                {
+                    {
+                        if (enemy.XPos() == player.XPos() && enemy.YPos() == player.YPos())
+                        {
+                            enemy.TakeDamage(player.GetAttack());
+
+                            (int y, int x) pushedPosition = (enemy.YPos() + (player.lastMovement.y * 2), enemy.XPos() + (player.lastMovement.x * 2));
+
+                            if (map[pushedPosition.y][pushedPosition.y] == '`') 
+                            {
+                                enemy.SetPosition(pushedPosition);
+                            }
+
+                            if (enemy.CheckIfDead()) 
+                            {
+                                enemies.Remove(enemy);
+                            }
+                        }
+                    }
+                }
+
+                DrawEnemies(true);
+                MoveEnemies();
+
+                foreach (Enemy enemy in enemies)
+                {
+                    {
+                        if (enemy.XPos() == player.XPos() && enemy.YPos() == player.YPos())
+                        {
+                            Console.SetCursorPosition(0, map.GetLength(0) + 3);
+                            player.TakeDamage(enemy.GetAttack());
+
+                            (int y, int x) pushedPosition = (player.YPos() + (enemy.lastMovement.y * 2), player.XPos() + (enemy.lastMovement.x * 2));
+
+                            Console.WriteLine($"Player X{player.XPos()} Y{player.YPos()}");
+                            Console.WriteLine($"Pushed Position: X{pushedPosition.x} Y{pushedPosition.y}");
+
+                            if (map[pushedPosition.y][pushedPosition.x] == '`')
+                            {
+                                Console.WriteLine("Pushed!");
+
+                                player.SetPosition(pushedPosition);
+                            }
+
+                            Console.SetCursorPosition(0, map.GetLength(0));
+                            Console.Write("Player hurt, HP is at " + player.GetHealth());
+
+                            /*if (enemy.CheckIfDead())
+                            {
+                                enemies.Remove(enemy);
+                            }*/
+                        }
+                    }
+                }
+
                 DrawPlayer();
+                DrawEnemies();
             }
         }
 
         static void ReadPlayerInput() 
         {
-            if (Console.KeyAvailable) 
+            if (Console.KeyAvailable)
             {
                 int px = player.XPos();
                 int py = player.YPos();
@@ -115,9 +304,9 @@ namespace GameProg_TextBasedRPG_Tweedale
                 }
                 else if (input == ConsoleKey.S || input == ConsoleKey.DownArrow)
                 {
-                    if (py < map.GetLength(0))
+                    if (py < map.GetLength(0)-1)
                     {
-                        if (map[py + 1][px] == '`' || map[py - 1][px] == '_')
+                        if (map[py + 1][px] == '`' || map[py + 1][px] == '_')
                         {
                             player.MoveVertical(1);
                         }
@@ -135,7 +324,7 @@ namespace GameProg_TextBasedRPG_Tweedale
                 }
                 else if (input == ConsoleKey.D || input == ConsoleKey.RightArrow)
                 {
-                    if (px < map[0].Length)
+                    if (px < map[0].Length-1)
                     {
                         if (map[py][px + 1] == '`' || map[py][px + 1] == '_')
                         {
@@ -146,7 +335,7 @@ namespace GameProg_TextBasedRPG_Tweedale
 
                 while (Console.KeyAvailable)
                 {
-                    Console.ReadKey(false);
+                    Console.ReadKey(true);
                 }
             }
         }
@@ -180,8 +369,8 @@ namespace GameProg_TextBasedRPG_Tweedale
                 else if (input == ConsoleKey.Escape)
                 {
                     readinginput = false;
-                    return false;
                     Console.WriteLine("Goodbye!");
+                    return false;
                 }
             }
 
@@ -203,6 +392,36 @@ namespace GameProg_TextBasedRPG_Tweedale
 
             Console.BackgroundColor = ConsoleColor.Black;
             Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        static void DrawEnemies(bool invisible = false) 
+        {
+            foreach (Enemy enemy in enemies) 
+            {
+                DrawEnemy(enemy, invisible);
+            }
+        }
+
+        static void DrawEnemy(Enemy enemy, bool invisible = false)
+        {
+            Console.SetCursorPosition(enemy.XPos() + 1, enemy.YPos() + 1);
+
+            GetColorForChar(map[enemy.YPos()][enemy.XPos()]);
+            Console.ForegroundColor = ConsoleColor.Red;
+
+            if (!invisible) Console.Write('X');
+            else Console.Write(' ');
+
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        static void MoveEnemies() 
+        {
+            foreach (Enemy enemy in enemies) 
+            {
+                enemy.MoveTowardsPlayer(map, player.XPos(), player.YPos());
+            }
         }
 
         static void ReadMap() 
