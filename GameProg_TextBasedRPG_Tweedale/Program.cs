@@ -18,6 +18,8 @@ namespace GameProg_TextBasedRPG_Tweedale
         public int yPos;
         public int coins;
 
+        public int recentPlayerDamage = 0;
+
         public (int x, int y) lastMovement = (0, 0);
 
         public Player(int maxhp, int hp, int att, int x, int y) 
@@ -146,6 +148,7 @@ namespace GameProg_TextBasedRPG_Tweedale
 
                 //Console.SetCursorPosition(0, map.GetLength(0) + 3);
                 player.TakeDamage(GetAttack());
+                player.recentPlayerDamage = GetAttack();
 
                 //Console.WriteLine($"Player X{player.XPos()} Y{player.YPos()}");
                 //Console.WriteLine($"Pushed Position: X{pushX} Y{pushY}");
@@ -228,6 +231,9 @@ namespace GameProg_TextBasedRPG_Tweedale
         static int xOffset = 1;
         static int yOffset = 3;
 
+        static int recentEnemyDamage = 0;
+        static int recentCoinPickup = 0;
+
         static Player player;
 
         static List<Enemy> enemies = new List<Enemy>();
@@ -249,7 +255,6 @@ namespace GameProg_TextBasedRPG_Tweedale
             enemySpawners.Add((30, 6, 5));
             enemies.Add(new Enemy(3, 1, 5, 0));
             coins.Add((12, 12, 1));
-            
 
             DisplayMap();
             DrawSpawners();
@@ -261,8 +266,10 @@ namespace GameProg_TextBasedRPG_Tweedale
             while (looping) 
             {
                 //Thread.Sleep(500);
-                
+                EventLog();
+                ResetEvents();
                 ReadPlayerInput();
+                EventLog();
 
                 DrawCoins();
                 DrawEnemies();
@@ -307,12 +314,57 @@ namespace GameProg_TextBasedRPG_Tweedale
             Console.Write($"Coins: ${player.coins}");
         }
 
+        static void EventLog() 
+        {
+            Console.SetCursorPosition(0, map.GetLength(0) + 2 + yOffset);
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.ForegroundColor = ConsoleColor.White;
+
+            Console.WriteLine("                                                       ");
+            Console.WriteLine("                                                       ");
+            Console.WriteLine("                                                       ");
+
+            Console.SetCursorPosition(0, map.GetLength(0) + 2 + yOffset);
+
+            if (player.recentPlayerDamage != 0) 
+            {
+                Console.Write("You've been hit for ");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write($"{player.recentPlayerDamage} damage");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("!");
+            }
+            if (recentEnemyDamage != 0)
+            {
+                Console.Write("You dealt ");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write($"{recentEnemyDamage} damage ");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("to an enemy!");
+            }
+            if (recentCoinPickup != 0)
+            {
+                Console.Write("You picked up ");
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write($"${recentCoinPickup}");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("!");
+            }
+        }
+
+        static void ResetEvents() 
+        {
+            player.recentPlayerDamage = 0;
+            recentEnemyDamage = 0;
+            recentCoinPickup = 0;
+        }
+
         static void EndGame() 
         {
             Console.SetCursorPosition(0, map.GetLength(0) + 2 + yOffset);
             Console.BackgroundColor = ConsoleColor.Black;
-            Console.ForegroundColor = ConsoleColor.Red;
 
+            Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("You died!");
             Console.ForegroundColor = ConsoleColor.White;
             Console.Write("Final coins: ");
@@ -345,6 +397,7 @@ namespace GameProg_TextBasedRPG_Tweedale
             //Console.SetCursorPosition(0, map.GetLength(0) + 3);
 
             enemy.TakeDamage(player.GetAttack());
+            recentEnemyDamage = player.GetAttack();
 
             //Console.WriteLine($"Enemy X{enemy.XPos()} Y{enemy.YPos()}");
             //Console.WriteLine($"Pushed Position: X{newEnemyX} Y{newEnemyY}");
@@ -542,6 +595,7 @@ namespace GameProg_TextBasedRPG_Tweedale
             {
                 if (player.XPos() == coins[i].x && player.YPos() == coins[i].y) 
                 {
+                    recentCoinPickup += coins[i].value;
                     player.PickupCoins(coins[i].value);
                     coins.Remove(coins[i]);
                 }
