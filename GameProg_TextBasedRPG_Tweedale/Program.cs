@@ -69,7 +69,7 @@ namespace GameProg_TextBasedRPG_Tweedale
 
     internal class Enemy 
     {
-        private int maxHP;
+        public int maxHP;
         private int health;
         private int attack;
         public int xPos;
@@ -134,7 +134,7 @@ namespace GameProg_TextBasedRPG_Tweedale
             return adjacent;
         }
 
-        public void MoveTowardsPlayer(string[] map, Player player)
+        public void MoveTowardsPlayer(string[] map, Player player, List<Enemy> enemies)
         {
             int playerX = player.XPos();
             int playerY = player.YPos();
@@ -150,7 +150,17 @@ namespace GameProg_TextBasedRPG_Tweedale
                 //Console.WriteLine($"Player X{player.XPos()} Y{player.YPos()}");
                 //Console.WriteLine($"Pushed Position: X{pushX} Y{pushY}");
 
-                if (map[pushY][pushX] == '`')
+                bool otherEnemyInTargetPosition = false;
+
+                for (int e = 0; e < enemies.Count; e++)
+                {
+                    if (enemies[e].XPos() == pushX && enemies[e].YPos() == pushY)
+                    {
+                        otherEnemyInTargetPosition = true;
+                    }
+                }
+
+                if (map[pushY][pushX] == '`' && !otherEnemyInTargetPosition)
                 {
                     player.SetPosition((pushY, pushX));
                 }
@@ -181,9 +191,22 @@ namespace GameProg_TextBasedRPG_Tweedale
 
                         if (map[newYPos][newXPos] == '`')
                         {
-                            lastMovement = (newXPos - xPos, newYPos - yPos);
-                            SetPosition((newYPos, newXPos));
-                            break;
+                            bool otherEnemyInTargetPosition = false;
+
+                            for (int e = 0; e < enemies.Count; e++) 
+                            {
+                                if (enemies[e].XPos() == newXPos && enemies[e].YPos() == newYPos) 
+                                {
+                                    otherEnemyInTargetPosition = true;
+                                }
+                            }
+
+                            if (!otherEnemyInTargetPosition)
+                            {
+                                lastMovement = (newXPos - xPos, newYPos - yPos);
+                                SetPosition((newYPos, newXPos));
+                                break;
+                            }
                         }
                     }
                 }
@@ -208,18 +231,8 @@ namespace GameProg_TextBasedRPG_Tweedale
         static Player player;
 
         static List<Enemy> enemies = new List<Enemy>();
-        static List<(int x, int y)> coins = new List<(int x, int y)>();
-
-        // usage: map[y, x]
-
-        // map legend:
-        // ^ = mountain
-        // ` = grass
-        // ~ = water
-        // * = trees
-
-        
-
+        static List<(int x, int y, int timer)> enemySpawners = new List<(int x, int y, int timer)>();
+        static List<(int x, int y, int value)> coins = new List<(int x, int y, int value)>();
 
         static void Main(string[] args)
         {
@@ -230,13 +243,19 @@ namespace GameProg_TextBasedRPG_Tweedale
             player = new Player(5, 5, 1, 0, 0);
             player.SetPosition(GetStartPosition());
 
+            enemySpawners.Add((4, 0, 8));
+            enemySpawners.Add((3, 10, 12));
+            enemySpawners.Add((32, 1, 3));
+            enemySpawners.Add((30, 6, 5));
             enemies.Add(new Enemy(3, 1, 5, 0));
-            coins.Add((12, 12));
+            coins.Add((12, 12, 1));
             
+
             DisplayMap();
-            DrawPlayer();
-            DrawEnemies();
+            DrawSpawners();
             DrawCoins();
+            DrawEnemies();
+            DrawPlayer();
             DrawHUD();
 
             while (looping) 
@@ -254,13 +273,24 @@ namespace GameProg_TextBasedRPG_Tweedale
 
                 DrawPlayer(true);
                 DrawEnemies(true);
-                MoveEnemies();
 
-                DrawPlayer();
-                DrawEnemies();
+                MoveEnemies();
+                EnemySpawnerCountdown();
+
+                DrawSpawners();
                 DrawCoins();
+                DrawEnemies();
+                DrawPlayer();
                 DrawHUD();
+
+                if (player.GetHealth() <= 0) 
+                {
+                    looping = false;
+                    DrawPlayer(true);
+                }
             }
+
+            EndGame();
         }
 
         static void DrawHUD() 
@@ -275,6 +305,20 @@ namespace GameProg_TextBasedRPG_Tweedale
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.Write($"Coins: ${player.coins}");
+        }
+
+        static void EndGame() 
+        {
+            Console.SetCursorPosition(0, map.GetLength(0) + 2 + yOffset);
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.ForegroundColor = ConsoleColor.Red;
+
+            Console.WriteLine("You died!");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Final coins: ");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"${player.coins}");
+            Console.ForegroundColor = ConsoleColor.White;
         }
 
         static Enemy EnemyAtPosition(int yPos, int xPos) 
@@ -320,7 +364,7 @@ namespace GameProg_TextBasedRPG_Tweedale
 
             if (enemy.CheckIfDead())
             {
-                coins.Add((enemy.XPos(), enemy.YPos()));
+                coins.Add((enemy.XPos(), enemy.YPos(), enemy.maxHP));
                 enemies.Remove(enemy);
             }
         }
@@ -469,7 +513,7 @@ namespace GameProg_TextBasedRPG_Tweedale
             GetColorForChar(map[enemy.YPos()][enemy.XPos()]);
             Console.ForegroundColor = ConsoleColor.Red;
 
-            if (!invisible) Console.Write('X');
+            if (!invisible) Console.Write($"{enemy.GetHealth()}");
             else Console.Write(' ');
 
             Console.BackgroundColor = ConsoleColor.Black;
@@ -498,7 +542,7 @@ namespace GameProg_TextBasedRPG_Tweedale
             {
                 if (player.XPos() == coins[i].x && player.YPos() == coins[i].y) 
                 {
-                    player.PickupCoins(1);
+                    player.PickupCoins(coins[i].value);
                     coins.Remove(coins[i]);
                 }
             }
@@ -508,7 +552,42 @@ namespace GameProg_TextBasedRPG_Tweedale
         {
             foreach (Enemy enemy in enemies) 
             {
-                enemy.MoveTowardsPlayer(map, player);
+                enemy.MoveTowardsPlayer(map, player, enemies);
+            }
+        }
+
+        static void EnemySpawnerCountdown() 
+        {
+            for (int i = 0; i < enemySpawners.Count; i++) 
+            {
+                (int x, int y, int timer) spawner = enemySpawners[i];
+                enemySpawners[i] = (spawner.x, spawner.y, spawner.timer-1);
+
+                if (enemySpawners[i].timer <= 0) 
+                {
+                    Random rand = new Random();
+                    int hp = rand.Next(1, 6);
+
+                    enemies.Add(new Enemy(hp, 1, spawner.x, spawner.y+1));
+
+                    enemySpawners[i] = (spawner.x, spawner.y, rand.Next(8, 19));
+                }
+            }
+        }
+
+        static void DrawSpawners()
+        {
+            for (int i = 0; i < enemySpawners.Count; i++)
+            {
+                Console.SetCursorPosition(enemySpawners[i].x + 1, enemySpawners[i].y + yOffset);
+
+                GetColorForChar(map[enemySpawners[i].y][enemySpawners[i].x]);
+                Console.ForegroundColor = ConsoleColor.Black;
+
+                Console.Write('∩');
+
+                Console.BackgroundColor = ConsoleColor.Black;
+                Console.ForegroundColor = ConsoleColor.White;
             }
         }
 
