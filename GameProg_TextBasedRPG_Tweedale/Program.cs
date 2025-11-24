@@ -364,6 +364,12 @@ namespace GameProg_TextBasedRPG_Tweedale
             Console.SetCursorPosition(0, map.GetLength(0) + 2 + yOffset);
             Console.BackgroundColor = ConsoleColor.Black;
 
+            Console.WriteLine("                                                       ");
+            Console.WriteLine("                                                       ");
+            Console.WriteLine("                                                       ");
+
+            Console.SetCursorPosition(0, map.GetLength(0) + 2 + yOffset);
+
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("You died!");
             Console.ForegroundColor = ConsoleColor.White;
@@ -495,46 +501,6 @@ namespace GameProg_TextBasedRPG_Tweedale
             }
 
             PickupCoins();
-        }
-
-        static bool OldMapScalingCode() 
-        {
-            //DisplayLegend();
-            Console.WriteLine();
-            if (scale > 1) Console.Write($"{scale - 1} <--");
-            else Console.Write("     ");
-            Console.Write($"    {scale}    ");
-            Console.WriteLine($"--> {scale + 1}");
-            Console.WriteLine("\n     Esc = Quit");
-
-            bool readinginput = true;
-
-            while (readinginput)
-            {
-                ConsoleKey input = Console.ReadKey(true).Key;
-
-                if (input == ConsoleKey.LeftArrow && scale > 1)
-                {
-                    scale--;
-                    readinginput = false;
-                }
-                else if (input == ConsoleKey.RightArrow)
-                {
-                    scale++;
-                    readinginput = false;
-                }
-                else if (input == ConsoleKey.Escape)
-                {
-                    readinginput = false;
-                    Console.WriteLine("Goodbye!");
-                    return false;
-                }
-            }
-
-            Console.Clear();
-            DisplayMap(scale);
-            DisplayLegend();
-            return true;
         }
 
         static void DrawPlayer(bool invisible = false) 
