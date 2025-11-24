@@ -520,7 +520,7 @@ namespace GameProg_TextBasedRPG_Tweedale
             Console.SetCursorPosition(player.XPos()+1, player.YPos()+yOffset);
 
             GetColorForChar(map[player.YPos()][player.XPos()]);
-            Console.ForegroundColor = ConsoleColor.Red;
+            Console.ForegroundColor = ConsoleColor.Magenta;
 
             if (!invisible) Console.Write('Ö');
             else Console.Write(' ');
