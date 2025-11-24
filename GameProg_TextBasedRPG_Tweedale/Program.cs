@@ -253,8 +253,14 @@ namespace GameProg_TextBasedRPG_Tweedale
             enemySpawners.Add((3, 10, 12));
             enemySpawners.Add((32, 1, 3));
             enemySpawners.Add((30, 6, 5));
-            enemies.Add(new Enemy(3, 1, 5, 0));
+
+            enemies.Add(new Enemy(3, 1, 10, 1));
+
             coins.Add((12, 12, 1));
+            coins.Add((3, 0, 10));
+            coins.Add((3, 9, 10));
+            coins.Add((32, 0, 10));
+            coins.Add((30, 5, 10));
 
             DisplayMap();
             DrawSpawners();
@@ -311,7 +317,10 @@ namespace GameProg_TextBasedRPG_Tweedale
             Console.Write($"Health: {player.GetHealth()}/{player.maxHP}   ");
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.Write($"Coins: ${player.coins}");
+            Console.Write($"Coins: ${player.coins}    ");
+
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("Controls: WASD - Move | Spacebar - Wait");
         }
 
         static void EventLog() 
@@ -376,7 +385,10 @@ namespace GameProg_TextBasedRPG_Tweedale
             Console.Write("Final coins: ");
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"${player.coins}");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("Press any key to quit...");
             Console.ForegroundColor = ConsoleColor.White;
+            Console.ReadKey(true);
         }
 
         static Enemy EnemyAtPosition(int yPos, int xPos) 
@@ -557,14 +569,24 @@ namespace GameProg_TextBasedRPG_Tweedale
 
         static void PickupCoins() 
         {
+            List<int> coinsToRemove = new List<int>();
+
             for (int i = 0; i < coins.Count; i++) 
             {
                 if (player.XPos() == coins[i].x && player.YPos() == coins[i].y) 
                 {
                     recentCoinPickup += coins[i].value;
                     player.PickupCoins(coins[i].value);
-                    coins.Remove(coins[i]);
+                    coinsToRemove.Add(i);
                 }
+            }
+
+            // sort in descending order
+            coinsToRemove.Sort((a, b) => b.CompareTo(a));
+
+            foreach (int index in coinsToRemove) 
+            {
+                coins.RemoveAt(index);
             }
         }
 
